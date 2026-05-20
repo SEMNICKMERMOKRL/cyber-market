@@ -5,6 +5,8 @@ import { MercadoPagoConfig, Payment } from 'mercadopago'
 
 dotenv.config()
 
+console.log('TOKEN:', process.env.MP_ACCESS_TOKEN)
+
 const app = express()
 
 app.use(cors())
