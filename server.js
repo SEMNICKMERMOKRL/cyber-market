@@ -15,7 +15,7 @@ app.use(express.json())
 
 mercadopago.configure({
   access_token:
-    'SEU_ACCESS_TOKEN_MERCADO_PAGO',
+    'APP_USR-6549580196272623-052002-015c76633dd8043e01d4d604c793b816-3415580190',
 })
 
 /* =========================
