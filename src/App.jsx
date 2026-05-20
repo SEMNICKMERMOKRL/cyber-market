@@ -17,23 +17,13 @@ export default function App() {
   const [loadingPix, setLoadingPix] =
     useState(false)
 
-  const [pixData, setPixData] =
-    useState(null)
-
-  const [cartOpen, setCartOpen] =
-    useState(false)
-
   const [cart, setCart] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedCart =
-        localStorage.getItem('rota-cart')
+    const savedCart =
+      localStorage.getItem('rota-cart')
 
-      return savedCart
-        ? JSON.parse(savedCart)
-        : []
-    }
-
-    return []
+    return savedCart
+      ? JSON.parse(savedCart)
+      : []
   })
 
   const products = [
@@ -80,7 +70,7 @@ export default function App() {
   }, [cart])
 
   /* =========================
-     ADICIONAR
+     ADICIONAR AO CARRINHO
   ========================= */
 
   const addToCart = (product) => {
@@ -108,12 +98,10 @@ export default function App() {
         },
       ])
     }
-
-    setCartOpen(true)
   }
 
   /* =========================
-     REMOVER
+     REMOVER ITEM
   ========================= */
 
   const removeFromCart = (id) => {
@@ -168,7 +156,7 @@ export default function App() {
   )
 
   /* =========================
-     TOTAL
+     TOTAL PREÇO
   ========================= */
 
   const total = cart.reduce(
@@ -178,46 +166,51 @@ export default function App() {
   )
 
   /* =========================
-     GERAR PIX
+     PAGAMENTO PIX
   ========================= */
 
-  const handlePixPayment = async () => {
-    if (cart.length === 0) {
-      alert('Seu carrinho está vazio')
+const handlePixPayment = async () => {
+  if (cart.length === 0) return alert('Carrinho vazio')
+
+  try {
+    setLoadingPix(true)
+
+    const response = await axios.post(
+      'http://localhost:3001/create-pix',
+      {
+        items: cart,
+        total,
+      }
+    )
+
+    const data = response.data
+
+    if (data.ticket_url) {
+      window.open(data.ticket_url, '_blank')
       return
     }
 
-    try {
-      setLoadingPix(true)
+    if (data.qr_code_base64) {
+      const win = window.open('', '_blank')
 
-      const response = await axios.post(
-        'http://localhost:3001/create-pix',
-        {
-          items: cart,
-          total,
-        }
-      )
-
-      console.log(response.data)
-
-      setPixData(response.data)
-
-      if (response.data.ticket_url) {
-        window.open(
-          response.data.ticket_url,
-          '_blank'
-        )
-      }
-    } catch (error) {
-      console.log(error)
-
-      alert(
-        'Erro ao gerar PIX. Verifique o backend.'
-      )
-    } finally {
-      setLoadingPix(false)
+      win.document.write(`
+        <html>
+          <body style="background:#000;color:#fff;text-align:center;padding:40px">
+            <h2>PIX GERADO</h2>
+            <img src="data:image/png;base64,${data.qr_code_base64}" />
+            <p>${data.qr_code}</p>
+          </body>
+        </html>
+      `)
     }
+
+  } catch (err) {
+    console.log(err)
+    alert('Erro ao gerar PIX')
+  } finally {
+    setLoadingPix(false)
   }
+}
 
   return (
     <div className="bg-black text-white min-h-screen overflow-x-hidden">
@@ -231,7 +224,7 @@ export default function App() {
             ROTA DO BURGER
           </h1>
 
-          {/* MENU DESKTOP */}
+          {/* MENU */}
           <nav className="hidden md:flex gap-8 text-zinc-300 font-semibold">
 
             <a href="#home">
@@ -249,12 +242,7 @@ export default function App() {
           </nav>
 
           {/* CARRINHO */}
-          <button
-            onClick={() =>
-              setCartOpen(!cartOpen)
-            }
-            className="flex items-center gap-2 bg-zinc-900 px-4 py-2 rounded-2xl border border-zinc-800 hover:border-orange-400 transition-all"
-          >
+          <div className="hidden md:flex items-center gap-2 bg-zinc-900 px-4 py-2 rounded-2xl border border-zinc-800">
 
             <ShoppingCart className="text-orange-400" />
 
@@ -262,7 +250,7 @@ export default function App() {
               {cartCount}
             </span>
 
-          </button>
+          </div>
 
           {/* MOBILE */}
           <button
@@ -285,40 +273,6 @@ export default function App() {
           </button>
 
         </div>
-
-        {/* MENU MOBILE */}
-        {menuOpen && (
-          <div className="md:hidden bg-zinc-950 border-t border-zinc-800 px-6 py-6 flex flex-col gap-6">
-
-            <a
-              href="#home"
-              onClick={() =>
-                setMenuOpen(false)
-              }
-            >
-              Início
-            </a>
-
-            <a
-              href="#produtos"
-              onClick={() =>
-                setMenuOpen(false)
-              }
-            >
-              Produtos
-            </a>
-
-            <a
-              href="#carrinho"
-              onClick={() =>
-                setMenuOpen(false)
-              }
-            >
-              Carrinho
-            </a>
-
-          </div>
-        )}
       </header>
 
       {/* HERO */}
@@ -370,7 +324,6 @@ export default function App() {
                 alt={product.name}
                 className="w-full h-80 object-cover"
                 loading="lazy"
-                fetchPriority="high"
               />
 
               <div className="p-6">
@@ -406,152 +359,113 @@ export default function App() {
       </section>
 
       {/* CARRINHO */}
-      {cartOpen && (
-        <section
-          id="carrinho"
-          className="py-24 px-6 bg-black"
-        >
+      <section
+        id="carrinho"
+        className="py-24 px-6 bg-black"
+      >
 
-          <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto">
 
-            <h2 className="text-5xl font-black mb-10">
-              SEU CARRINHO
-            </h2>
+          <h2 className="text-5xl font-black mb-10">
+            SEU CARRINHO
+          </h2>
 
-            {cart.length === 0 ? (
-              <div className="bg-zinc-900 rounded-3xl p-10 text-center text-zinc-400 text-xl">
-                Seu carrinho está vazio.
-              </div>
-            ) : (
-              <div className="space-y-6">
+          {cart.length === 0 ? (
+            <div className="bg-zinc-900 rounded-3xl p-10 text-center text-zinc-400 text-xl">
+              Seu carrinho está vazio.
+            </div>
+          ) : (
+            <div className="space-y-6">
 
-                {cart.map((item) => (
+              {cart.map((item) => (
 
-                  <div
-                    key={item.id}
-                    className="bg-zinc-900 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6"
-                  >
+                <div
+                  key={item.id}
+                  className="bg-zinc-900 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6"
+                >
 
-                    <div>
+                  <div>
 
-                      <h3 className="text-2xl font-black text-orange-400">
-                        {item.name}
-                      </h3>
+                    <h3 className="text-2xl font-black text-orange-400">
+                      {item.name}
+                    </h3>
 
-                      <p className="text-zinc-400 mt-2">
-                        Quantidade:
-                        {' '}
-                        {item.quantity}
-                      </p>
-
-                    </div>
-
-                    <div className="flex items-center gap-3 flex-wrap">
-
-                      <button
-                        onClick={() =>
-                          decreaseQuantity(item.id)
-                        }
-                        className="bg-zinc-800 p-3 rounded-xl"
-                      >
-                        <Minus size={18} />
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          increaseQuantity(item.id)
-                        }
-                        className="bg-zinc-800 p-3 rounded-xl"
-                      >
-                        <Plus size={18} />
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          removeFromCart(item.id)
-                        }
-                        className="bg-red-600 p-3 rounded-xl"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-
-                      <span className="text-2xl font-black ml-4">
-                        R$
-                        {' '}
-                        {(
-                          item.price *
-                          item.quantity
-                        ).toFixed(2)}
-                      </span>
-
-                    </div>
+                    <p className="text-zinc-400 mt-2">
+                      Quantidade:
+                      {' '}
+                      {item.quantity}
+                    </p>
 
                   </div>
 
-                ))}
+                  <div className="flex items-center gap-3 flex-wrap">
 
-                {/* TOTAL */}
-                <div className="bg-zinc-900 border border-green-500 rounded-3xl p-8 text-center">
+                    <button
+                      onClick={() =>
+                        decreaseQuantity(item.id)
+                      }
+                      className="bg-zinc-800 p-3 rounded-xl"
+                    >
+                      <Minus size={18} />
+                    </button>
 
-                  <h3 className="text-4xl font-black text-green-400">
-                    TOTAL: R$ {total.toFixed(2)}
-                  </h3>
+                    <button
+                      onClick={() =>
+                        increaseQuantity(item.id)
+                      }
+                      className="bg-zinc-800 p-3 rounded-xl"
+                    >
+                      <Plus size={18} />
+                    </button>
 
-                  <button
-                    onClick={handlePixPayment}
-                    disabled={loadingPix}
-                    className="mt-8 bg-green-500 hover:bg-green-400 text-black px-10 py-5 rounded-2xl font-black text-xl disabled:opacity-50"
-                  >
-                    {loadingPix
-                      ? 'GERANDO PIX...'
-                      : 'PAGAR VIA PIX'}
-                  </button>
+                    <button
+                      onClick={() =>
+                        removeFromCart(item.id)
+                      }
+                      className="bg-red-600 p-3 rounded-xl"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+
+                    <span className="text-2xl font-black ml-4">
+                      R$
+                      {' '}
+                      {(
+                        item.price *
+                        item.quantity
+                      ).toFixed(2)}
+                    </span>
+
+                  </div>
 
                 </div>
 
-                {/* PIX */}
-                {pixData?.qr_code_base64 && (
-                  <div className="bg-zinc-900 border border-green-500 rounded-3xl p-10 text-center mt-10">
+              ))}
 
-                    <h2 className="text-4xl font-black text-green-400">
-                      PIX GERADO
-                    </h2>
+              {/* TOTAL */}
+              <div className="bg-zinc-900 border border-green-500 rounded-3xl p-8 text-center">
 
-                    <img
-                      src={`data:image/png;base64,${pixData.qr_code_base64}`}
-                      alt="PIX"
-                      className="w-72 mx-auto mt-8 rounded-2xl"
-                    />
+                <h3 className="text-4xl font-black text-green-400">
+                  TOTAL: R$ {total.toFixed(2)}
+                </h3>
 
-                    <textarea
-                      readOnly
-                      value={pixData.qr_code}
-                      className="w-full bg-zinc-800 text-white p-4 rounded-2xl mt-8 h-32"
-                    />
-
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(
-                          pixData.qr_code
-                        )
-
-                        alert('PIX copiado')
-                      }}
-                      className="mt-6 bg-green-500 hover:bg-green-400 text-black px-8 py-4 rounded-2xl font-black"
-                    >
-                      COPIAR PIX
-                    </button>
-
-                  </div>
-                )}
+                <button
+                  onClick={handlePixPayment}
+                  disabled={loadingPix}
+                  className="mt-8 bg-green-500 hover:bg-green-400 text-black px-10 py-5 rounded-2xl font-black text-xl disabled:opacity-50"
+                >
+                  {loadingPix
+                    ? 'GERANDO PIX...'
+                    : 'PAGAR VIA PIX'}
+                </button>
 
               </div>
-            )}
 
-          </div>
+            </div>
+          )}
 
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* FOOTER */}
       <footer className="border-t border-zinc-800 py-10 text-center text-zinc-500 bg-black">
