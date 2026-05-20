@@ -12,7 +12,8 @@ import {
 import axios from 'axios'
 
 export default function App() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] =
+    useState(false)
 
   const [loadingPix, setLoadingPix] =
     useState(false)
@@ -111,7 +112,7 @@ export default function App() {
   }
 
   /* =========================
-     AUMENTAR
+     AUMENTAR QUANTIDADE
   ========================= */
 
   const increaseQuantity = (id) => {
@@ -128,7 +129,7 @@ export default function App() {
   }
 
   /* =========================
-     DIMINUIR
+     DIMINUIR QUANTIDADE
   ========================= */
 
   const decreaseQuantity = (id) => {
@@ -188,31 +189,26 @@ export default function App() {
 
       console.log(response.data)
 
-      if (response.data.init_point) {
-        window.location.href =
-          response.data.init_point
+      /* =========================
+         ABRIR PIX
+      ========================= */
 
-        return
-      }
-
-      if (response.data.pixUrl) {
-        window.open(
-          response.data.pixUrl,
+      if (
+        response.data.qr_code_base64
+      ) {
+        const newWindow = window.open(
+          '',
           '_blank'
         )
 
-        return
-      }
-
-      if (response.data.qr_code_base64) {
-        const win = window.open('', '_blank')
-
-        win.document.write(`
+        newWindow.document.write(`
           <html>
+
             <head>
-              <title>PIX</title>
+              <title>Pagamento PIX</title>
 
               <style>
+
                 body{
                   background:#000;
                   color:#fff;
@@ -227,8 +223,8 @@ export default function App() {
 
                 img{
                   width:300px;
-                  margin-top:20px;
                   border-radius:20px;
+                  margin-top:20px;
                 }
 
                 textarea{
@@ -240,6 +236,7 @@ export default function App() {
                   border-radius:12px;
                   padding:15px;
                   resize:none;
+                  font-size:14px;
                 }
 
                 button{
@@ -251,7 +248,13 @@ export default function App() {
                   border-radius:12px;
                   font-weight:bold;
                   cursor:pointer;
+                  font-size:16px;
                 }
+
+                h1{
+                  font-size:40px;
+                }
+
               </style>
             </head>
 
@@ -259,9 +262,13 @@ export default function App() {
 
               <h1>PIX GERADO</h1>
 
-              <img src="data:image/png;base64,${response.data.qr_code_base64}" />
+              <img
+                src="data:image/png;base64,${response.data.qr_code_base64}"
+              />
 
-              <textarea readonly>${response.data.qr_code}</textarea>
+              <textarea readonly>
+${response.data.qr_code}
+              </textarea>
 
               <button
                 onclick="
@@ -273,17 +280,20 @@ export default function App() {
               </button>
 
             </body>
+
           </html>
         `)
 
         return
       }
 
-      alert('PIX gerado')
+      alert('PIX gerado com sucesso')
     } catch (error) {
       console.log(error)
 
-      alert('Erro ao gerar PIX')
+      alert(
+        'Erro ao gerar PIX. Verifique o backend.'
+      )
     } finally {
       setLoadingPix(false)
     }
