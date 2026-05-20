@@ -1,27 +1,14 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-
-import {
-  MercadoPagoConfig,
-  Payment,
-} from 'mercadopago'
+import { MercadoPagoConfig, Payment } from 'mercadopago'
 
 dotenv.config()
 
 const app = express()
 
-/* =========================
-   CONFIG
-========================= */
-
 app.use(cors())
-
 app.use(express.json())
-
-/* =========================
-   MERCADO PAGO
-========================= */
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN,
@@ -29,131 +16,67 @@ const client = new MercadoPagoConfig({
 
 const payment = new Payment(client)
 
-/* =========================
-   TESTE SERVIDOR
-========================= */
-
 app.get('/', (req, res) => {
-  res.send(
-    'SERVIDOR PIX ONLINE'
-  )
+  res.send('PIX SERVER ONLINE')
 })
-
-/* =========================
-   CRIAR PIX
-========================= */
 
 app.post('/create-pix', async (req, res) => {
   try {
     const { total, items } = req.body
 
-    /* =========================
-       VALIDAR TOTAL
-    ========================= */
-
-    if (!total || Number(total) <= 0) {
-      return res.status(400).json({
-        error: 'Total inválido',
-      })
+    if (!total || total <= 0) {
+      return res.status(400).json({ error: 'Total inválido' })
     }
-
-    /* =========================
-       CRIAR PAGAMENTO PIX
-    ========================= */
 
     const response = await payment.create({
       body: {
         transaction_amount: Number(total),
-
-        description:
-          'Pedido Rota do Burger',
-
+        description: 'Pedido Rota do Burger',
         payment_method_id: 'pix',
 
         payer: {
-          email:
-            'cliente@email.com',
+          email: 'playbr24@gmail.com',
         },
 
         additional_info: {
-          items:
-            items?.map((item) => ({
-              id: String(item.id),
-
-              title: item.name,
-
-              quantity:
-                Number(item.quantity),
-
-              unit_price:
-                Number(item.price),
-            })) || [],
+          items: items?.map(i => ({
+            id: String(i.id),
+            title: i.name,
+            quantity: Number(i.quantity),
+            unit_price: Number(i.price),
+          })) || [],
         },
       },
     })
 
-    console.log(
-      'PIX GERADO:',
-      response.id
-    )
+    const tx = response?.point_of_interaction?.transaction_data
 
-    /* =========================
-       RETORNAR PIX
-    ========================= */
+    if (!tx) {
+      return res.status(500).json({
+        error: 'PIX não gerado pela API',
+      })
+    }
 
     return res.json({
       success: true,
-
       payment_id: response.id,
-
-      qr_code:
-        response.point_of_interaction
-          .transaction_data.qr_code,
-
-      qr_code_base64:
-        response.point_of_interaction
-          .transaction_data
-          .qr_code_base64,
-
-      ticket_url:
-        response.point_of_interaction
-          .transaction_data
-          .ticket_url,
+      qr_code: tx.qr_code || null,
+      qr_code_base64: tx.qr_code_base64 || null,
+      ticket_url: tx.ticket_url || null,
     })
+
   } catch (error) {
-    console.log(
-      'ERRO PIX:',
-      error
-    )
+    console.log('ERRO PIX:', error)
 
     return res.status(500).json({
-      success: false,
-
-      error:
-        'Erro ao gerar PIX',
-
-      details:
-        error.message ||
-        'Erro interno',
+      error: 'Erro ao gerar PIX',
+      details: error.message,
     })
   }
 })
 
-/* =========================
-   START SERVER
-========================= */
-
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 
 app.listen(PORT, () => {
-  console.log(`
-===================================
- SERVIDOR PIX ONLINE
-===================================
-
-URL:
-http://localhost:${PORT}
-
-===================================
-`)
+  console.log(`PIX SERVER ONLINE -> http://localhost:${PORT}`)
 })
