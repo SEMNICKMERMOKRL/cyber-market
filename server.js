@@ -1,54 +1,59 @@
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 
-import { MercadoPagoConfig, Payment } from 'mercadopago'
-
-dotenv.config()
+import mercadopago from 'mercadopago'
 
 const app = express()
 
 app.use(cors())
+
 app.use(express.json())
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN,
+/* =========================
+   MERCADO PAGO
+========================= */
+
+mercadopago.configure({
+  access_token:
+    'SEU_ACCESS_TOKEN_MERCADO_PAGO',
 })
 
-const payment = new Payment(client)
+/* =========================
+   GERAR PIX
+========================= */
 
 app.post('/create-pix', async (req, res) => {
   try {
-
     const { total } = req.body
 
-    const result = await payment.create({
-      body: {
+    const payment =
+      await mercadopago.payment.create({
         transaction_amount: Number(total),
 
-        description: 'Pedido Rota do Burger',
+        description:
+          'Pedido Rota do Burger',
 
         payment_method_id: 'pix',
 
         payer: {
-          email: 'playbr24@gmail.com',
+          email:
+            'playbr24@gmail.com',
         },
-      },
-    })
+      })
+
+    const data =
+      payment.body.point_of_interaction
+        .transaction_data
 
     res.json({
-      pixCode:
-        result.point_of_interaction.transaction_data.qr_code,
+      qr_code: data.qr_code,
 
-      pixQrCode:
-        result.point_of_interaction.transaction_data.qr_code_base64,
+      qr_code_base64:
+        data.qr_code_base64,
 
-      pixUrl:
-        result.point_of_interaction.transaction_data.ticket_url,
+      pixUrl: data.ticket_url,
     })
-
   } catch (error) {
-
     console.log(error)
 
     res.status(500).json({
@@ -57,6 +62,12 @@ app.post('/create-pix', async (req, res) => {
   }
 })
 
+/* =========================
+   SERVER
+========================= */
+
 app.listen(3001, () => {
-  console.log('PIX SERVER ONLINE')
+  console.log(
+    'SERVIDOR PIX ONLINE NA PORTA 3001'
+  )
 })
