@@ -12,13 +12,19 @@ import {
 import axios from 'axios'
 
 export default function App() {
-  const [menuOpen, setMenuOpen] =
-    useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const [loadingPix, setLoadingPix] =
     useState(false)
 
+  /* =========================
+     CARRINHO
+  ========================= */
+
   const [cart, setCart] = useState(() => {
+    if (typeof window === 'undefined')
+      return []
+
     const savedCart =
       localStorage.getItem('rota-cart')
 
@@ -26,6 +32,10 @@ export default function App() {
       ? JSON.parse(savedCart)
       : []
   })
+
+  /* =========================
+     PRODUTOS
+  ========================= */
 
   const products = [
     {
@@ -112,7 +122,7 @@ export default function App() {
   }
 
   /* =========================
-     AUMENTAR QUANTIDADE
+     AUMENTAR
   ========================= */
 
   const increaseQuantity = (id) => {
@@ -129,7 +139,7 @@ export default function App() {
   }
 
   /* =========================
-     DIMINUIR QUANTIDADE
+     DIMINUIR
   ========================= */
 
   const decreaseQuantity = (id) => {
@@ -179,10 +189,13 @@ export default function App() {
     try {
       setLoadingPix(true)
 
+      const API_URL =
+        import.meta.env.VITE_API_URL ||
+        'http://localhost:3001'
+
       const response = await axios.post(
-        'http://localhost:3001/create-pix',
+        `${API_URL}/create-pix`,
         {
-          items: cart,
           total,
         }
       )
@@ -190,25 +203,41 @@ export default function App() {
       console.log(response.data)
 
       /* =========================
-         ABRIR PIX
+         ABRIR PIX MERCADO PAGO
       ========================= */
 
-      if (
-        response.data.qr_code_base64
-      ) {
-        const newWindow = window.open(
-          '',
+      if (response.data.pixUrl) {
+        window.open(
+          response.data.pixUrl,
           '_blank'
         )
 
-        newWindow.document.write(`
-          <html>
+        return
+      }
 
+      /* =========================
+         MOSTRAR QR CODE
+      ========================= */
+
+      if (
+        response.data.qr_code_base64 &&
+        response.data.qr_code
+      ) {
+        const win = window.open()
+
+        if (!win) {
+          alert(
+            'Permita popups para visualizar o PIX'
+          )
+          return
+        }
+
+        win.document.write(`
+          <html>
             <head>
-              <title>Pagamento PIX</title>
+              <title>PIX</title>
 
               <style>
-
                 body{
                   background:#000;
                   color:#fff;
@@ -219,6 +248,7 @@ export default function App() {
                   height:100vh;
                   font-family:Arial;
                   padding:20px;
+                  text-align:center;
                 }
 
                 img{
@@ -250,11 +280,6 @@ export default function App() {
                   cursor:pointer;
                   font-size:16px;
                 }
-
-                h1{
-                  font-size:40px;
-                }
-
               </style>
             </head>
 
@@ -262,13 +287,9 @@ export default function App() {
 
               <h1>PIX GERADO</h1>
 
-              <img
-                src="data:image/png;base64,${response.data.qr_code_base64}"
-              />
+              <img src="data:image/png;base64,${response.data.qr_code_base64}" />
 
-              <textarea readonly>
-${response.data.qr_code}
-              </textarea>
+              <textarea readonly>${response.data.qr_code}</textarea>
 
               <button
                 onclick="
@@ -280,7 +301,6 @@ ${response.data.qr_code}
               </button>
 
             </body>
-
           </html>
         `)
 
@@ -329,7 +349,10 @@ ${response.data.qr_code}
           </nav>
 
           {/* CARRINHO */}
-          <div className="hidden md:flex items-center gap-2 bg-zinc-900 px-4 py-2 rounded-2xl border border-zinc-800">
+          <a
+            href="#carrinho"
+            className="hidden md:flex items-center gap-2 bg-zinc-900 px-4 py-2 rounded-2xl border border-zinc-800 cursor-pointer hover:border-orange-400 transition-all"
+          >
 
             <ShoppingCart className="text-orange-400" />
 
@@ -337,7 +360,7 @@ ${response.data.qr_code}
               {cartCount}
             </span>
 
-          </div>
+          </a>
 
           {/* MOBILE */}
           <button
@@ -360,6 +383,40 @@ ${response.data.qr_code}
           </button>
 
         </div>
+
+        {/* MOBILE MENU */}
+        {menuOpen && (
+          <div className="md:hidden bg-zinc-950 border-t border-zinc-800 px-6 py-6 flex flex-col gap-6 text-lg">
+
+            <a
+              href="#home"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              Início
+            </a>
+
+            <a
+              href="#produtos"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              Produtos
+            </a>
+
+            <a
+              href="#carrinho"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+            >
+              Carrinho
+            </a>
+
+          </div>
+        )}
       </header>
 
       {/* HERO */}
@@ -431,7 +488,7 @@ ${response.data.qr_code}
                   onClick={() =>
                     addToCart(product)
                   }
-                  className="w-full mt-6 bg-orange-500 hover:bg-orange-400 text-black py-4 rounded-2xl font-black"
+                  className="w-full mt-6 bg-orange-500 hover:bg-orange-400 text-black py-4 rounded-2xl font-black transition-all"
                 >
                   ADICIONAR AO CARRINHO
                 </button>
@@ -539,7 +596,7 @@ ${response.data.qr_code}
                 <button
                   onClick={handlePixPayment}
                   disabled={loadingPix}
-                  className="mt-8 bg-green-500 hover:bg-green-400 text-black px-10 py-5 rounded-2xl font-black text-xl disabled:opacity-50"
+                  className="mt-8 bg-green-500 hover:bg-green-400 text-black px-10 py-5 rounded-2xl font-black text-xl disabled:opacity-50 transition-all"
                 >
                   {loadingPix
                     ? 'GERANDO PIX...'
